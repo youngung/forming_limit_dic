@@ -342,110 +342,272 @@ def main_disc(fn='BB/2011NOV10/node_disc_36.csv',
               fang=90.,ixy_flip=False,ioff=True,
               ntot_col=14):
     """
-    fang=fracture angle
-    0 1 2 3   4   5   6  7  8  9      10     11     12
-    x,y,z,exx,eyy,exy,e1,e2,vm,exxdot,eyydot,exydot,e33
+    fn       = file name: " /dum/[strainpath]/[date].csv "
+    dist     = distances from the critical point
+    fang     = fracture angle
+    ixy_flip = flag if x-y cooridnate should be switched
+    ioff     = interactive mode switch for MPL
+    ntot_col = total number of column belonging to a dat block
+
+    ## below is the column information for a block
+    icol:     0 1 2 3   4   5   6  7  8  9      10     11     12
+    variable: x,y,z,exx,eyy,exy,e1,e2,vm,exxdot,eyydot,exydot,e33
     """
     import os
     from MP.lib.axes_label import __deco_fld__ as deco_fld
+    import matplotlib.pyplot as plt
+    from MP.lib.mpl_lib import wide_fig as wf
+    from MP.lib.mpl_lib import rm_all_lab as ral
+
+    ## output file name
     strain_path = fn.split(os.sep)[1]
     date = fn.split(os.sep)[2].split('.')[0]
     fn_out = '%s_%s'%(strain_path,date)
 
-    import matplotlib.pyplot as plt
-
+    ## MPL interactive mode switch
     if ioff: plt.ioff()
     else: plt.ion()
 
-    from MP.lib.mpl_lib import wide_fig as wf
-    from MP.lib.mpl_lib import rm_all_lab as ral
+    ## Read data from VIC-3d software
     dat=read_disc(fn=fn,ndat_col=ntot_col,
                   ixy_flip=ixy_flip)
 
     ## through thickness strain rate minimum
     fig=wf(nw=3,nh=4,w0=0.0,ws=1.0,w1=0.0,
-           h0=0.0,hs=1.0,h1=0.0,
-           uw=2.3,uh=2.3,left=0.2,up=0.1,down=0.2,iarange=True)
-    fig1=wf(nw=5,nh=1,
-            left=0.1,w0=0.2,ws=0.6,w1=0.2,down=0.15,
-            iarange=True)
+           h0=0.0,hs=1.0,h1=0.0,uw=2.3,uh=2.3,
+           left=0.2,up=0.1,down=0.2,iarange=True)
+    fig1=wf(nw=5,nh=1,left=0.1,w0=0.2,ws=0.6,w1=0.2,
+            down=0.15,iarange=True)
     n_image=len(fig.axes)
-    IND=None
-    dum=None
+    IND=None; dum=None
+
+
     for i in range(len(fig.axes)):
         ax=fig.axes[i]
-        dum = plot_xy_2dc(
-            dat,istp=-n_image+i,ax=ax,icol=12,dist=dist,
-            fang=fang,is_max=False,IND=dum)
-        if i==n_image-1: IND=dum[::]
+        plot_xy_disc_e33dot(dat,istp=-n_image-i,icol=12,
+                            ax=ax,
+                            fang=fang,
+                            dist_bb=dist,
+                            dist_rib=[1,2,3,4])
+        return
+                        
+                        
 
-    dst=[0]
-    for i in range(len(dist)):
-        dst.append(dist[i]); dst.append(-dist[i])
 
-    #print dst
-    ls = ['k-','r-','r--','b-','b--','g-','g--',
-          'm-','m--','c-','c--']
-    EYY,EXX,LS=[],[],[]
-    for i in range(len(dst)):
-        ind = IND[i]
-        exx=dat[:,ind,3]
-        eyy=dat[:,ind,4]
-        e33=dat[:,ind,12]
-        exxdot=dat[:,ind,9]
-        eyydot=dat[:,ind,10]
-        exydot=dat[:,ind,11]
-        ezzdot = - exxdot - eyydot
+    # """ Core of the 'point' method """
+    # ## Strain color-map for the last 12 images
+    # ## Also, find coordinate
+    # for i in range(len(fig.axes)):
+    #     ax=fig.axes[i]
+    #     dum = plot_xy_2dc(
+    #         dat,istp=-n_image+i,ax=ax,icol=12,dist=dist,
+    #         fang=fang,is_max=False,IND=dum)
+    #     if i==n_image-1: IND=dum[::]
 
-        # ## e1,2 = (ex+ey)/2. +-  sqrt( ((ex-ey)/2)^2 + exy^2)
-        # A = (exxdot+eyydot)/2.
-        # B = np.sqrt(((exxdot-eyydot)/2.)**2 + exy**2)
-        # e11dot = A+B
-        # e22dot = A-B
-        # e33dot = -e11dot - e22dot
-        # ## e11dot/e22dot/e33dot ???
-        ## ezzdot=dat[:,ind,11]
-        ## e33 dot??
+    # dst=[0]
+    # for i in range(len(dist)):
+    #     dst.append(dist[i]); dst.append(-dist[i])
 
-        ndat=len(eyy); index = np.arange(ndat)
+    # ls = ['k-','r-','r--','b-','b--','g-','g--',
+    #       'm-','m--','c-','c--']
+    # EYY,EXX,LS=[],[],[]
+    # for i in range(len(dst)):
+    #     ind = IND[i]
+    #     exx=dat[:,ind,3]
+    #     eyy=dat[:,ind,4]
+    #     e33=dat[:,ind,12]
+    #     exxdot=dat[:,ind,9]
+    #     eyydot=dat[:,ind,10]
+    #     exydot=dat[:,ind,11]
+    #     ezzdot = - exxdot - eyydot
+    #     ndat=len(eyy); index = np.arange(ndat)
+    #     ndat0 = int(ndat*0.9)
+    #     fig1.axes[0].plot(index,-e33,            ls[i],label=dst[i])
+    #     fig1.axes[1].plot(index[ndat0:],-e33[ndat0:],   ls[i],label=dst[i])
+    #     fig1.axes[2].plot(index,-ezzdot,         ls[i],label=dst[i])
+    #     fig1.axes[3].plot(index[ndat0:],-ezzdot[ndat0:],ls[i],label=dst[i])
 
-        ndat0 = int(ndat*0.9)
-        fig1.axes[0].plot(index,-e33,            ls[i],label=dst[i])
-        fig1.axes[1].plot(index[ndat0:],-e33[ndat0:],   ls[i],label=dst[i])
-        fig1.axes[2].plot(index,-ezzdot,         ls[i],label=dst[i])
-        fig1.axes[3].plot(index[ndat0:],-ezzdot[ndat0:],ls[i],label=dst[i])
+    #     fig1.axes[4].plot(eyy,exx,ls[i])## RD//y TD//x
+    #     EYY.append(eyy)
+    #     EXX.append(exx)
+    #     LS.append(ls[i])
+    # """ Core of the 'point' method """
 
-        fig1.axes[4].plot(eyy,exx,ls[i])## RD//y TD//x
-        EYY.append(eyy)
-        EXX.append(exx)
-        LS.append(ls[i])
+    # ## Deco figures
+    # fig1.axes[0].legend(loc='best',ncol=2,fontsize=7,fancybox=True).\
+    #     get_frame().set_alpha(0.5)
 
-    fig1.axes[0].legend(loc='best',ncol=2,fontsize=7,fancybox=True).\
-        get_frame().set_alpha(0.5)
-    ## deco_fld(fig1.axes[2],iopt=2)
-    fig1.axes[0].set_xlabel('index')
-    fig1.axes[1].set_xlabel('index')
-    fig1.axes[2].set_xlabel('index')
-    fig1.axes[3].set_xlabel('index')
+    # ## deco_fld(fig1.axes[2],iopt=2)
+    # for i in range(4):
+    #     fig1.axes[i].set_xlabel('index')
 
-    fig1.axes[0].set_ylabel(r'$\bar{E}_{33}$')
-    fig1.axes[1].set_ylabel(r'$\bar{E}_{33}$')
-    fig1.axes[2].set_ylabel(r'$\dot{\bar{E}}_{33}$')
-    fig1.axes[3].set_ylabel(r'$\dot{\bar{E}}_{33}$')
+    # fig1.axes[0].set_ylabel(r'$\bar{E}_{33}$')
+    # fig1.axes[1].set_ylabel(r'$\bar{E}_{33}$')
+    # fig1.axes[2].set_ylabel(r'$\dot{\bar{E}}_{33}$')
+    # fig1.axes[3].set_ylabel(r'$\dot{\bar{E}}_{33}$')
 
-    fig1.axes[2].set_yscale('log')
-    fig1.axes[3].set_ylim(0.,)
+    # fig1.axes[2].set_yscale('log')
+    # fig1.axes[3].set_ylim(0.,)
 
-    fig.axes[0].set_title(r'$\dot{\bar{E}}_{33}$')
-    ral(fig.axes)
-    # fig.savefig('%s_e33dot.pdf'%fn_out)
-    # fig1.savefig('%s_e33dot_e33_time1.pdf'%fn_out)
-    fig.savefig('%s_e33dot.png'%fn_out)
-    fig1.savefig('%s_e33dot_e33_time1.png'%fn_out)
+    # fig.axes[0].set_title(r'$\dot{\bar{E}}_{33}$')
+    # ral(fig.axes)
+    # fig.savefig('%s_e33dot.png'%fn_out)
+    # fig1.savefig('%s_e33dot_e33_time1.png'%fn_out)
 
-    return EYY,EXX,LS
+    # return EYY,EXX,LS
 
-def plot_xy_2dc(dat,istp=-1,ax=None,icol=11,is_max=True,fang=90,
+def find_coordinate_index(
+    dat_disc,ind_image=-1,xy=[0,0],is_max=True,
+    icol=11,dist_filter=2.):
+    """
+    Find index that cooresponds
+    to the given 'xy' coordinate
+    """
+    from MP import ssort
+    sort=ssort.shellSort
+
+    x0,y0 = xy
+    d     = dat[istp,:,:]
+    x,y   = dat[istp,:,0],dat[istp,:,1]
+    dist  = []; ind_ref = []
+    for i in range(len(x)):
+        if np.isnan(x0) or np.isnan(y0): pass
+        else:
+            d=np.sqrt((x0-x)**2 + (y0-y)**2)
+            if d<dist_filter:
+                dist.append(d)
+                ind_ref[i]
+    if len(ind_ref)==0: return -1
+    dist_sorted, indc = sort(dist)
+    return in_ref[indc[0]]
+
+def plot_xy_disc_e33dot(dat,istp=-1,
+                        ax=None,
+                        icol=11,
+                        fang=90,
+                        dist_bb=[2.5,5,10], ## backbone
+                        dist_rib=[1,2,3,4]
+                        ):
+                        
+    """
+    Extract DIC data from 'disc' area
+    """
+    from MP.lib.mpl_lib import wide_fig as wf
+    from MP.lib.mpl_lib import rm_all_lab as ral
+
+    import matplotlib as mpl
+    from MP.lib import mpl_lib
+    from MP import ssort
+
+
+    sort=ssort.shellSort
+
+    d=dat[istp,:,:]
+    dz = np.log10(abs(d[:,icol]))
+    for i in range(len(dz)):
+        if dz[i]==np.inf or dz[i]==-np.inf:
+            dz[i] = np.nan
+    mn=min(dz);mx=max(dz)
+    norm=mpl.colors.Normalize(vmin=mn, vmax=mx)
+    cmap, m = mpl_lib.norm_cmap(
+        mn=mn,mx=mx,cm_name='brg')
+    n=d.shape[0]
+
+
+    ## find values in the back-bone branch shape
+    ids = []; xs = []; ys = []; zs = []
+    for i in range(n):
+        x,y,z=d[i,0],d[i,1],-d[i,icol]
+        if np.isnan(z): pass
+        else:
+            zs.append(d[i,icol])
+            ids.append(i)
+            xs.append(d[i,0])
+            ys.append(d[i,1])
+        c = m.to_rgba(np.log10(z))
+        ax.plot(x,y,'o',ms=1.5,
+                color=c,mfc=c,mec='None')
+
+    val, ind = sort(zs)
+    imn = ids[ind[0]]
+    ax.plot(d[imn,0],d[imn,1],'g.') ## minimum
+
+    ## draw a backbone grid
+    x0,y0=d[imn,0],d[imn,1] # center of backbone
+
+    db=np.array(dist_bb); dr=np.array(dist_rib)
+    DB=[]; DR=[]
+    for i in range(len(db)):
+        DB.append(-db[-i-1])
+    DB.append(0)
+    for i in range(len(db)):
+        DB.append(db[i])
+    for i in range(len(dr)):
+        DR.append(-dr[-i-1])
+    DR.append(0)
+    for i in range(len(dr)):
+        DR.append(dr[i])
+
+    db=DB[::];dr=DR[::]
+    xy_db_dr = np.zeros((len(db),len(dr),2))
+    for i in range(len(db)):
+        for j in range(len(dr)):
+            xy_db_dr[i,j,:] = db[i], dr[j]
+
+    ## rotate xy by fang
+    for i in range(len(db)):
+        for j in range(len(dr)):
+            y,x = xy_db_dr[i,j,:]
+            xy_db_dr[i,j,:] = rot_xy([x,y],fang)
+
+    ## translate
+    xy_db_dr[:,:,0] =     xy_db_dr[:,:,0] + x0 
+    xy_db_dr[:,:,1] =     xy_db_dr[:,:,1] + y0
+
+    fig=wf(nw=len(db),nh=len(dr),w0=0.0,ws=1.0,w1=0.0,
+           h0=0.0,hs=1.0,h1=0.0,uw=2.3,uh=2.3,
+           left=0.2,up=0.1,down=0.2,iarange=True)
+    fig1=wf(nw=1,nh=1,w0=0.0,ws=1.0,w1=0.0,
+            h0=0.0,hs=1.0,h1=0.0,uw=2.3,uh=2.3,
+            left=0.2,up=0.1,down=0.2,iarange=True)
+
+    iax=0
+    sym=['k^','k+','kd','kx','k<','k>','k*',
+         '','']
+    for i in range(len(db)):
+        indices_along_ribs = []
+        for j in range(len(dr)):
+            x,y = xy_db_dr[i,j,:]
+            ind = find_nearest([x,y], xs,ys)
+            indices_along_ribs.append(ind)
+
+        epsx = []; epsy = []; epst_dot = []
+        for k in range(len(indices_along_ribs)):
+            ind = indices_along_ribs[k]
+            x = d[ind,0]
+            y = d[ind,1]
+            ax.plot(x,y,sym[i],ms=3)
+
+            ex=dat[:,ind,9]
+            ey=dat[:,ind,10]
+            et=dat[:,ind,12]
+
+            ex_d=dat[:,ind,9]
+            ey_d=dat[:,ind,10]
+            ez_d=-ex_d-ey_d
+            epst_dot.append(ez_d)
+            fig.axes[iax].plot(ez_d)
+            iax=iax + 1
+
+        epst_dot=np.array(epst_dot).T
+        D=[]
+        for k in range(len(epst_dot)):
+            D.append(np.mean(epst_dot[k]))
+        fig1.axes[0].plot(D,label=db[i])
+    fig1.axes[0].legend(loc='best',ncol=2,fontsize=7)
+
+def plot_xy_2dc(dat,istp=-1,ax=None,icol=11,
+                is_max=True,fang=90,
                 dist=[2.5,5,10],IND=None):
     """
     Extract DIC data from 'disc' area
@@ -460,14 +622,14 @@ def plot_xy_2dc(dat,istp=-1,ax=None,icol=11,is_max=True,fang=90,
     for i in range(len(dz)):
         if dz[i]==np.inf or dz[i]==-np.inf:
             dz[i] = np.nan
-
     mn=min(dz);mx=max(dz)
+
     norm=mpl.colors.Normalize(vmin=mn, vmax=mx)
     cmap, m = mpl_lib.norm_cmap(
         mn=mn,mx=mx,cm_name='brg')
     n=d.shape[0]
-    ids = []; xs = []; ys = []; zs = []
 
+    ids = []; xs = []; ys = []; zs = []
     ## index seeking if necessary
     for i in range(n):
         x=d[i,0]
@@ -525,18 +687,29 @@ def plot_xy_2dc(dat,istp=-1,ax=None,icol=11,is_max=True,fang=90,
             #ax.plot(d[ind0],ys[ind0],sym)
         return IND
 
+def rot_xy_o(xy,o,th):
+    xy=np.array(xy)
+    o =np.array(o)
+    XY = xy - o
+    XY = rot_xy(XY,th)
+    return XY + o
+    
+
+def rot_xy(xy,th):
+    c=np.cos(th*np.pi/180.)
+    s=np.sin(th*np.pi/180.)
+    rot = np.array([[c,-s],[s,c]])
+    return np.dot(rot,xy)
+
 def find_xy(r,fang,x,y):
     fang=np.pi*fang/180. + np.pi/2.
-    x1=x+r*np.cos(fang)
-    y1=y+r*np.sin(fang)
-    x2=x-r*np.cos(fang)
-    y2=y-r*np.sin(fang)
+    x1=x+r*np.cos(fang);    y1=y+r*np.sin(fang)
+    x2=x-r*np.cos(fang);    y2=y-r*np.sin(fang)
     return [x1,y1],[x2,y2]
 
 def find_nearest(xy0,xs,ys):
     from MP import ssort
     sort=ssort.shellSort
-
     ds=calc_dist(xy0,xs,ys)
     val,ind=sort(ds)
     return ind[0]
@@ -549,29 +722,10 @@ def calc_dist(xy0,xs,ys):
     return ds
 
 def __calc_dist__(xy0,xy1):
-    x0,y0=xy0
-    x1,y1=xy1
+    x0,y0=xy0; x1,y1=xy1
     return np.sqrt((x0-x1)**2 + (y0-y1)**2)
 
 def ex02(
-
-
-    ## eigen
-    # fns=['BB/2011NOV10/node_disc_36.csv',
-    #      'BB/2012JUL11/node_disc_36.csv',
-    #      'PSRD/2011NOV17/node_disc_36.csv',
-    #      'PSRD/2012JUL12/node_disc_36.csv',
-    #      'PSRD/2012JUL13/node_disc_36.csv',
-    #      'PSTD/2011NOV17/node_disc_36.csv',
-    #      'PSTD/2012JUL17/node_disc_36.csv'],
-    # fangs=[90,90,0,0,0,90,90],
-    # dist=[5,10,15,20],
-    # ixy_flip=[False,False,False,False,
-    #           False,False,True],
-    # ntot_col=[14,14,14,14,14,14,14],
-    # ioff=True):
-
-
     ## non-smooth
     fns=['Bsteel_non_smooth/BB/2011NOV10.csv',
          'Bsteel_non_smooth/BB/2012JUL11.csv',
@@ -616,10 +770,8 @@ def ex02(
     deco_fld(fig.axes[0],iopt=2)
     deco_fld(fig.axes[1],iopt=2)
     fig.axes[0].grid('on');fig.axes[1].grid('on')
-
     plt.draw()
-    fig.savefig('EXP_FLD.pdf')
-    fig.savefig('EXP_FLD.png')
+    fig.savefig('EXP_FLD.pdf'); fig.savefig('EXP_FLD.png')
 
 def ex01(fns=['BB/2012JUL11/epsilon_xlines.csv',
               'PSRD/2012JUL12/epsilon_ylines.csv',
