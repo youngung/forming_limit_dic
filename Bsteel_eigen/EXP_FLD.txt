@@ -1,0 +1,20 @@
+      path      date dist [mm]       Exx       Eyy      Std1      Std2     color
+        BB 2012JUL11         6     0.476     0.456     0.006     0.005         b
+        BB 2012JUL11         4     0.487     0.458     0.010     0.005         g
+        BB 2012JUL11         2     0.513     0.459     0.013     0.005         r
+        BB 2012JUL11         0     0.534     0.459     0.018     0.006         c
+      path      date dist [mm]       Exx       Eyy      Std1      Std2     color
+      PSRD 2012JUL12         6     0.331    -0.013     0.006     0.002         b
+      PSRD 2012JUL12         4     0.367    -0.017     0.011     0.001         g
+      PSRD 2012JUL12         2     0.439    -0.020     0.004     0.001         r
+      PSRD 2012JUL12         0     0.496    -0.020     0.001     0.002         c
+      path      date dist [mm]       Exx       Eyy      Std1      Std2     color
+      PSRD 2012JUL13         6       nan       nan       nan       nan         b
+      PSRD 2012JUL13         4     0.396    -0.033     0.022     0.003         g
+      PSRD 2012JUL13         2     0.441    -0.034     0.010     0.003         r
+      PSRD 2012JUL13         0     0.460    -0.029     0.013     0.011         c
+      path      date dist [mm]       Exx       Eyy      Std1      Std2     color
+      PSTD 2012JUL17         6    -0.028     0.358     0.001     0.003         b
+      PSTD 2012JUL17         4    -0.032     0.392     0.001     0.014         g
+      PSTD 2012JUL17         2    -0.035     0.446     0.002     0.013         r
+      PSTD 2012JUL17         0    -0.036     0.461     0.002     0.014         c
