@@ -2,35 +2,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 ### data analyzed by and extracted from a newer Vic3D
-def read_disc(fn='BB/2012JUL11/node_data.csv',ndat_col=13,
-              ixy_flip=False):
-    # import pandas as pd
-    # pd.read_csv()
-    dat=np.genfromtxt(fn,delimiter=',',skiprows=1)
-    shp = dat.shape
-    # print shp
-    # print ndat_col
-    # print float(shp[1])/float(ndat_col)
-    ## raise IOError
-    dat=np.reshape(dat, (shp[0],shp[1]/ndat_col,ndat_col))
-
-    if ixy_flip:
-        ## xy coordinate
-        dum = dat[:,:,0][::].copy() ## x coordinate
-        dat[:,:,0] = dat[:,:,1][::].copy() ## y cooridnate
-        dat[:,:,1] = dum[::].copy()
-
-        ## strain coordinate
-        dum= dat[:,:,3][::].copy()
-        dat[:,:,3] = dat[:,:,4][::].copy()
-        dat[:,:,4] = dum[::].copy()
-
-        ## strain rate coordinate
-        dum = dat[:,:,9][::].copy()
-        dat[:,:,9] = dat[:,:,10][::].copy()
-        dat[:,:,10]= dum[::].copy()
-    return dat
-
 def main_disc(fn='BB/2011NOV10/node_disc_36.csv',
               dist_bb=[10],
               dist_rb=[5],
@@ -56,6 +27,7 @@ def main_disc(fn='BB/2011NOV10/node_disc_36.csv',
     from MP.lib.mpl_lib import wide_fig as wf
     from MP.lib.mpl_lib import rm_all_lab as ral
     from matplotlib.backends.backend_pdf import PdfPages
+    from readers import read_disc
 
     ## output file name
     strain_path = fn.split(os.sep)[1]
