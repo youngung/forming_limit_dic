@@ -1,0 +1,2 @@
+def interpolate(dat):
+    pass
