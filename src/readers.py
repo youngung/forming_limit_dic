@@ -1,8 +1,9 @@
 ### collection of some readers
 import numpy as np
 from os import sep
-def read_disc(fn='BB/2012JUL11/node_data.csv',ndat_col=13,
-              ixy_flip=False):
+def read_disc(fn='BB/2012JUL11/node_data.csv',
+              ndat_col=14,
+              ixy_flip=False,iopt=0):
     """
     Read dat extracted from VIC3D
     """
@@ -17,19 +18,20 @@ def read_disc(fn='BB/2012JUL11/node_data.csv',ndat_col=13,
     dat=np.reshape(dat, (shp[0],shp[1]/ndat_col,ndat_col))
 
     if ixy_flip:
+        raise IOError, "Do not use 'ixy_flip'"
         ## xy coordinate
         dum = dat[:,:,0][::].copy() ## x coordinate
         dat[:,:,0] = dat[:,:,1][::].copy() ## y cooridnate
         dat[:,:,1] = dum[::].copy()
 
         ## strain coordinate
-        dum= dat[:,:,3][::].copy()
-        dat[:,:,3] = dat[:,:,4][::].copy()
+        dum= dat[:,:,3][::].copy()        ## exx
+        dat[:,:,3] = dat[:,:,4][::].copy() ## eyy
         dat[:,:,4] = dum[::].copy()
 
         ## strain rate coordinate
-        dum = dat[:,:,9][::].copy()
-        dat[:,:,9] = dat[:,:,10][::].copy()
+        dum = dat[:,:,9][::].copy()          ##exxdot
+        dat[:,:,9] = dat[:,:,10][::].copy()  ##eyydot
         dat[:,:,10]= dum[::].copy()
     return dat
 
