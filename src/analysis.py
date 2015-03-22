@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import os
+import os, time
 from MP.lib.axes_label import __deco_fld__ as deco_fld
 from MP.lib.mpl_lib import wide_fig as wf
 from MP.lib.mpl_lib import rm_all_lab as ral
@@ -10,7 +10,10 @@ import matplotlib.gridspec as gridspec
 from matplotlib.backends.backend_pdf import PdfPages
 from readers import read_disc
 from MP.lib import mpl_lib
-from MP import ssort
+from MP import ssort, progress_bar
+from numpy import random
+uet = progress_bar.update_elapsed_time
+
 sort=ssort.shellSort
 
 ### data analyzed by and extracted from a newer Vic3D
@@ -26,11 +29,16 @@ def main_disc(fn='BB/2011NOV10/node_disc_36.csv',
               fout=None):
     """
     fn       = file name: " /dum/[strainpath]/[date].csv "
-    dist     = distances from the critical point
+    dist_bb  = distances from the critical point
+    dist_rb  = distances from the critical point
     fang     = fracture angle
     ixy_flip = flag if x-y cooridnate should be switched
     ioff     = interactive mode switch for MPL
     ntot_col = total number of column belonging to a dat block
+    icol_ezz = 12
+    fig      = None
+    iopt     = 0
+    fout     = None
 
     ## below is the column information for a block
     icol:     0 1 2 3   4   5   6  7  8  9      10     11     12
@@ -55,14 +63,119 @@ def main_disc(fn='BB/2011NOV10/node_disc_36.csv',
     dat=read_disc(fn=fn,ndat_col=ntot_col,
                   ixy_flip=ixy_flip)
 
-    n_image = find_indx_at_fracture(dat,iopt=iopt)
+    ## when using debugging: reduce the data sets.
+    nst,nxy,ncol=dat.shape
+    dat = dat[:,random.choice(nxy, nxy/40),:]
+    nst,nxy,ncol=dat.shape
+
+    ## find the index for a reduced set of
+    ## xy coordinates.
+    # dat_r = dat[:,random.choice(nxy, nxy/20),:]
+    dat_r = dat[::].copy()
+    n_image = find_indx_at_fracture(dat_r,iopt=iopt)
+
+    ## n_image-10 to n_image
+    fig_p   = plt.figure(figsize=(36,24))
+    fig_ezz = plt.figure(figsize=(36,24))
+    gs=gridspec.GridSpec(
+        40,40,wspace=4.0,hspace=2.0)
+    X=[];Y=[];Z=[];X_=[];Y_=[];Z_=[]
+    inds=[];m_=[];M_=[];Norm=[];Norm_=[]
+    for i in xrange(10):
+        mn =+np.inf; mx =-np.inf
+        mn_=+np.inf; mx_=-np.inf
+        ind = n_image-8+i+1
+        inds.append(ind)
+        xs,ys,zs = analysis_xy_disc_e33dot(
+            dat=dat,istp=ind,icol=12)
+        xs_,ys_,ezz = analysis_xy_disc_ezz(
+            dat=dat,istp=ind)
+        zs=np.log10(zs)
+        for j in xrange(len(zs)):
+            if zs[j]==-np.inf or zs[j]==np.inf: zs[j]=np.nan
+            if mx<zs[j]:   mx=zs[j]
+            elif mn>zs[j]: mn=zs[j]
+        for j in xrange(len(ezz)):
+            if ezz[j]==-np.inf or ezz[j]==np.inf: ezz[j]=np.nan
+            if mx_<ezz[j]:   mx_=ezz[j]
+            elif mn_>ezz[j]: mn_=ezz[j]
+
+        norm=mpl.colors.Normalize(vmin=mn,vmax=mx)
+        cmap,m=mpl_lib.norm_cmap(mn=mn,mx=mx,cm_name='brg')
+        m_.append(m)
+        norm_=mpl.colors.Normalize(vmin=mn_,vmax=mx_)
+        cmap,m=mpl_lib.norm_cmap(mn=mn_,mx=mx_,cm_name='brg')
+        M_.append(m)
+
+        X.append(xs);Y.append(ys);Z.append(zs)
+        X_.append(xs_);Y_.append(ys_);Z_.append(ezz)
+        Norm.append(norm);Norm_.append(norm_)
+
+    # mx=max(Z);mn=min(Z)
+    print
+
+    ## Construct figures
+    axps = []; axcbs = [] ; n_ax = 0
+    ax_ezzs=[]; axcbs_ezz=[]
+    for ix in xrange(4):
+        for iy in xrange(4):
+            if n_ax<10:
+                _ax_=fig_p.add_subplot(
+                    gs[10*ix:10*(ix+1),10*iy  :10*iy+8])
+                _axcb_=fig_p.add_subplot(
+                    gs[10*ix:10*(ix+1),10*iy+8:10*iy+9])
+                axps.append(_ax_); axcbs.append(_axcb_)
+                _ax_=fig_ezz.add_subplot(
+                    gs[10*ix:10*(ix+1),10*iy  :10*iy+8])
+                _axcb_=fig_ezz.add_subplot(
+                    gs[10*ix:10*(ix+1),10*iy+8:10*iy+9])
+                ax_ezzs.append(_ax_); axcbs_ezz.append(_axcb_)
+            n_ax=n_ax+1
+
+    ## Plot
+    t0 = time.time()
+    for i in xrange(10):
+        axp = axps[i]
+        xs,ys,zs = X[i],Y[i],Z[i]
+        cs = []
+        for j in xrange(len(xs)):
+            cs.append(m_[i].to_rgba(zs[j]))
+        uet(time.time()-t0,head='time spent for plotting')
+        axp.scatter(xs,ys,marker='.',color=cs)
+        axp.set_title('image #: %i'%inds[i])
+
+        ax_ezz=ax_ezzs[i]
+        xs,ys,zs = X_[i],Y_[i],Z_[i]
+        cs = []
+        ## color for each dot
+        for j in xrange(len(xs)):
+            cs.append(M_[i].to_rgba(zs[j]))
+        uet(time.time()-t0,head='time spent for plotting')
+        ax_ezz.scatter(xs,ys,marker='.',color=cs)
+        ax_ezz.set_title('image #: %i'%inds[i])
+        mpl_lib.add_cb(ax=axcbs[i],filled=True,
+                       format='%7.2e',norm=Norm[i],
+                       ylab=r'$\dot{\bar{E}}_{33}$')
+        mpl_lib.add_cb(ax=axcbs_ezz[i],filled=True,
+                       format='%7.4f',norm=Norm_[i],
+                       ylab=r'$\bar{E}_{33}$')
+
+    print
+    ral(axps)#fig_p.axes)
+    ral(ax_ezzs)#fig_ezz.axes)
+    fig_p.savefig('ezz_dot.pdf')
+    fig_p.savefig('ezz_dot.png')
+    fig_ezz.savefig('ezz.pdf')
+    fig_ezz.savefig('ezz.png')
+    plt.close(fig_p);plt.close(fig_ezz)
+    uet(time.time()-t0,head='time spent for plotting')
+    print
 
     # ## through thickness strain rate minimum
-
-    fig1 = plt.figure(figsize=(5,5))
-    gs   = gridspec.GridSpec(10,20,wspace=0.2,top=0.8)
-    ax   = fig1.add_subplot(gs[:,0:18])
-    axb  = fig1.add_subplot(gs[:,19])
+    fig1 = plt.figure(figsize=(6,4))
+    gs   = gridspec.GridSpec(10,20,wspace=0.2,top=0.9,left=0.2,right=0.7)
+    ax   = fig1.add_subplot(gs[:,0:12])
+    axb  = fig1.add_subplot(gs[:,14:16]) ## color bar
 
     fig2,fig3,mdat,c=plot_xy_disc_e33dot(
         dat,istp=n_image,icol=icol_ezz,
@@ -74,9 +187,8 @@ def main_disc(fn='BB/2011NOV10/node_disc_36.csv',
 
     col=['path','date','dist [mm]','Exx','Eyy','Std1','Std2','color']
     row=['%9s','%9s','%9i','%9.3f','%9.3f','%9.3f','%9.3f','%9s']
-    header =''
-    fmt    =''
-    for i in range(len(col)):
+    header =''; fmt    =''
+    for i in xrange(len(col)):
         header='%s %s'%(header,'%9s'%col[i])
         fmt   ='%s %s'%(fmt,row[i])
     print header
@@ -84,7 +196,7 @@ def main_disc(fn='BB/2011NOV10/node_disc_36.csv',
     db=np.array(dist_bb)
     dum = (db[::-1]).tolist()+[0]
     ndat = mdat.shape[-1]
-    for i in range(ndat):
+    for i in xrange(ndat):
         dat = mdat[:,:,i]
         ex = dat[0,0]; ey = dat[0,1]
         exe= dat[1,0]; eye= dat[1,1]
@@ -128,7 +240,7 @@ def find_coordinate_index(
     d     = dat[istp,:,:]
     x,y   = dat[istp,:,0],dat[istp,:,1]
     dist  = []; ind_ref = []
-    for i in range(len(x)):
+    for i in xrange(len(x)):
         if np.isnan(x0) or np.isnan(y0): pass
         else:
             d=np.sqrt((x0-x)**2 + (y0-y)**2)
@@ -139,7 +251,7 @@ def find_coordinate_index(
     dist_sorted, indc = sort(dist)
     return in_ref[indc[0]]
 
-def find_indx_at_fracture(dat,iopt=0):
+def find_indx_at_fracture(dat,iopt=0,selc='all'):
     """
     Find the DIC index giving the maximum
     thinining rate
@@ -158,12 +270,67 @@ def find_indx_at_fracture(dat,iopt=0):
     eyy_dot = dat[:,:,idy]
     ezz_dot = exx_dot+eyy_dot  ## absolute value
     EZ=[]
-    for istp in xrange(nstp):
-        inx = np.nanargmax(ezz_dot[istp,:])
-        EZ.append(ezz_dot[istp,inx])
+    t0=time.time()
+    if selc=='all':
+        for istp in xrange(nstp):
+            inx = np.nanargmax(ezz_dot[istp,:])
+            EZ.append(ezz_dot[istp,inx])
+            uet(second=time.time()-t0,head='Elapsed time in finding indx')
 
     # print np.argmax(EZ), '/', len(EZ)
     return np.argmax(EZ)
+
+
+def analysis_xy_disc_ezz(
+        dat,istp=-1):
+    d=dat[istp,:,:]
+    n=d.shape[0]
+    exx=d[:,3]
+    eyy=d[:,4]
+    ezz=-exx-eyy
+    for i in xrange(len(ezz)):
+        if ezz[i]==np.inf or ezz[i]==-np.inf:
+            ezz[i] = np.nan
+    xs,ys,zs=[],[],[]
+
+    for i in xrange(n):
+        if not(np.isnan(ezz[i])):
+            x,y=d[i,0],d[i,1]
+            xs.append(x)
+            ys.append(y)
+    return xs,ys,ezz
+
+def analysis_xy_disc_e33dot(
+        dat,istp=-1,icol=11):
+    """
+    Conduct the analysis on the disc.
+
+    1. Find the spot that gives the maximum 'thinning rate'
+    2. provide 'min-max' range of thickness strain rate
+
+    Arguments
+    =========
+    dat
+    istp      = -1
+    _fig_ezz_ = None
+    icol      = 11
+    """
+    d=dat[istp,:,:]
+    #dz=np.log10(abs(d[:,icol]))
+    dz=abs(d[:,icol])
+    for i in xrange(len(dz)):
+        if dz[i]==np.inf or dz[i]==-np.inf:
+            dz[i] = np.nan
+    n=d.shape[0]
+    xs,ys,zs=[],[],[]
+    for i in xrange(n):
+        x,y,z=d[i,0],d[i,1],-d[i,icol]
+        if not(np.isnan(z)):
+            xs.append(x)
+            ys.append(y)
+            zs.append(z)
+    return xs,ys,zs
+
 
 def plot_xy_disc_e33dot(
         dat,istp=-1,_fig_ezz_=None,icol=11,fang=90,
@@ -174,7 +341,7 @@ def plot_xy_disc_e33dot(
 
     Data are analyzed in the grid
     made of backbone and ribs
-    * The backbone grid is an analogy to the 
+    * The backbone grid is an analogy to the
      standard method using circular grid
 
     Arguments
@@ -191,10 +358,13 @@ def plot_xy_disc_e33dot(
     """
     d=dat[istp,:,:]
     dz = np.log10(abs(d[:,icol]))
+    mx = -np.inf; mn = +np.inf
     for i in xrange(len(dz)):
         if dz[i]==np.inf or dz[i]==-np.inf:
             dz[i] = np.nan
-    mn=min(dz);mx=max(dz)
+        if dz[i]>mx: mx = dz[i]
+        if dz[i]<mn: mn = dz[i]
+
     norm=mpl.colors.Normalize(vmin=mn, vmax=mx)
     cmap, m = mpl_lib.norm_cmap(
         mn=mn,mx=mx,cm_name='brg')
@@ -212,36 +382,40 @@ def plot_xy_disc_e33dot(
             xs.append(d[i,0])
             ys.append(d[i,1])
         c = m.to_rgba(np.log10(z))
-        ax.plot(x,y,'o',ms=1.5,
+        ax.plot(x,y,'.',ms=1.5,
                 color=c,mfc=c,mec='None')
 
-    mpl_lib.add_cb(ax=axb,filled=True, format='%7.3e',
+    mpl_lib.add_cb(ax=axb,filled=True, format='%7.2e',
                    norm = norm, ylab=r'$\dot{\bar{E}}_{33}$')
 
-    val, ind = sort(zs); imn = ids[ind[0]]
-    ax.plot(d[imn,0],d[imn,1],'g.') ## minimum
+
+    val, ind = sort(zs);
+    imn = ids[ind[0]]
+    ax.plot(d[imn,0],d[imn,1],'gx') ## minimum
+    ax.set_xlim(-0.5,0.8)
+    ax.set_ylim(-0.5,0.8)
 
     ## draw a backbone grid
     x0,y0=d[imn,0],d[imn,1] # center of backbone
 
     db=np.array(dist_bb); dr=np.array(dist_rb)
     DB=[]; DR=[]
-    for i in range(len(db)): DB.append(-db[-i-1])
+    for i in xrange(len(db)): DB.append(-db[-i-1])
     DB.append(0)
-    for i in range(len(db)): DB.append(db[i])
-    for i in range(len(dr)): DR.append(-dr[-i-1])
+    for i in xrange(len(db)): DB.append(db[i])
+    for i in xrange(len(dr)): DR.append(-dr[-i-1])
     DR.append(0)
-    for i in range(len(dr)): DR.append(dr[i])
+    for i in xrange(len(dr)): DR.append(dr[i])
 
     db=DB[::];dr=DR[::]
     xy_db_dr = np.zeros((len(db),len(dr),2))
-    for i in range(len(db)):
-        for j in range(len(dr)):
+    for i in xrange(len(db)):
+        for j in xrange(len(dr)):
             xy_db_dr[i,j,:] = db[i], dr[j]
 
     ## rotate xy by fang
-    for i in range(len(db)):
-        for j in range(len(dr)):
+    for i in xrange(len(db)):
+        for j in xrange(len(dr)):
             y,x = xy_db_dr[i,j,:]
             xy_db_dr[i,j,:] = rot_xy([x,y],fang)
 
@@ -262,16 +436,15 @@ def plot_xy_disc_e33dot(
     gs  = gridspec.GridSpec(
         nw,nh,wspace=0.0,
         hspace=0.2,left=0.2,top=0.80)
-    for i in range(nw*nh): fig.add_subplot(gs[i])
+    for i in xrange(nw*nh): fig.add_subplot(gs[i])
     gs  = gridspec.GridSpec(
         nw,nh,wspace=0.0,
         hspace=0.2,left=0.2,top=0.80)
-    for i in range(4): fig1.add_subplot(gs[i])
+    for i in xrange(4): fig1.add_subplot(gs[i])
 
     for _ax_ in fig.axes: _ax_.locator_params(nbins=4)
     for _ax_ in fig1.axes: _ax_.locator_params(nbins=4)
 
-    
     iax=0; sym=['k^','k+','kd','kx','k<','k>','k*',
                 'k1','k2','k3','k4','k8','ks','kp',
                 'kh','kH','kD']
@@ -281,16 +454,29 @@ def plot_xy_disc_e33dot(
     exx_av      = []; exx_std      = []
     eyy_av      = []; eyy_std      = []
     ezz_av      = []; ezz_std      = []
-    for i in range(len(db)): ## bone
+
+    fout=open('xy_indx_ribs.txt','w')
+
+    col = ('indb','indr','distb','ind')
+    fout.write('%7s %7s %7s %7s'%col); fout.write('\n')
+    form = '%7i %7i %7i %7i\n'
+    form_nan = '%7i %7i %7i %7s\n'
+    t0=time.time()
+    for i in xrange(len(db)): ## bone
         indices_along_ribs = []
-        for j in range(len(dr)):   ## ribs
+        for j in xrange(len(dr)):   ## ribs
             x,y = xy_db_dr[i,j,:]
             ind = find_nearest([x,y],xs,ys,err=2)
+
             if not(np.isnan(ind)):
                 indices_along_ribs.append(ids[ind])
+                fout.write(form%(i,j,ind))
+            else:
+                fout.write(form_nan%(i,j,'nan'))
+        uet(time.time(),head='Time spent for finding indices for BR')
 
         epsx = []; epsy = []; epsz = []; epst_dot = []; coord = []
-        for k in range(len(indices_along_ribs)):
+        for k in xrange(len(indices_along_ribs)):
             indx = indices_along_ribs[k]
             x = d[indx,0]; y = d[indx,1]
             coord.append([x,y])
@@ -319,7 +505,7 @@ def plot_xy_disc_e33dot(
 
         D    = []; D_e   = [];E_ex = []; E_exe = [];
         E_ey = []; E_eye = [];E_ez = []; E_eze = [];
-        for j in range(len(epst_dot)): ## number of ribs
+        for j in xrange(len(epst_dot)): ## number of ribs
             D.append(np.mean(epst_dot[j]))
             D_e.append(np.std(epst_dot[j]))
             E_ex.append(np.mean(epsx[j]))
@@ -338,18 +524,21 @@ def plot_xy_disc_e33dot(
         ezz_av.append(E_ez)
         ezz_std.append(E_eze)
 
+    print
+    fout.close()
+
     ## find maximum D value's index to trim the data
     ndat = (len(epst_dot_av)-1)/2+1
     ref=epst_dot_av[ndat-1] ## data at necking center spot
     _ref_=[]; _ind_ =[]
-    for i in range(len(ref)):
+    for i in xrange(len(ref)):
         if not(np.isnan(ref[i])):
             _ref_.append(ref[i]); _ind_.append(i)
     _val_, _i_ = sort(_ref_)
     ix = _ind_[_i_[-1]]
 
     mdat = np.zeros((2,2,ndat)); c    = []
-    for i in range(ndat):
+    for i in xrange(ndat):
         i0 =  i; i1 = -i -1
         ## thickness strain rate
         d1=epst_dot_av[i0];  d2=epst_dot_av[i1]
@@ -371,7 +560,7 @@ def plot_xy_disc_e33dot(
         eze1 = ezz_std[i0]; eze2 = ezz_std[i1]
         ez=[]; eze=[]
 
-        for j in range(len(d1)):  # along the time axis
+        for j in xrange(len(d1)):  # along the time axis
             d.append((d1[j]+d2[j])/2.)
             e.append((e1[j]+e2[j])/2.)
             ex.append((ex1[j]+ex2[j])/2.)
@@ -403,12 +592,11 @@ def plot_xy_disc_e33dot(
 
     ## deco
     from MP.lib.mpl_lib import tune_xy_lim
-    from MP.lib.mpl_lib import rm_all_lab
     fig1.axes[2].set_yscale('log')
     # fig1.axes[2].set_ylim(1e-3,)
     # tune_xy_lim(fig.axes);
     tune_xy_lim(fig1.axes)
-    rm_all_lab(fig.axes[1:]); rm_all_lab(fig1.axes[1:])
+    ral(fig.axes[1:]); ral(fig1.axes[1:])
     fig1.axes[0].legend(loc='best',ncol=2,fontsize=5,
                         bbox_to_anchor=(0.5,1.2)).\
         get_frame().set_alpha(0.5)
@@ -448,7 +636,7 @@ def find_nearest(xy0,xs,ys,err=None):
 
 def calc_dist(xy0,xs,ys):
     ds=[]
-    for i in range(len(xs)):
+    for i in xrange(len(xs)):
         xy1=[xs[i],ys[i]]
         ds.append(__calc_dist__(xy0,xy1))
     return ds
@@ -524,7 +712,7 @@ def ex02(
 
     fn = open('EXP_FLD.txt','w')
     fig4=wf(nw=1,nh=1)
-    for i in range(len(fns)):
+    for i in xrange(len(fns)):
         #try:
             ## print fns[i]
         fig1, fig2, fig3 = main_disc(

@@ -1,34 +1,44 @@
 ### collection of some readers
 import numpy as np
 from os import sep
+from time import time
+from MP import progress_bar
+import pandas as pd
+uet = progress_bar.update_elapsed_time
 def read_disc(fn='BB/2012JUL11/node_data.csv',
               ndat_col=14,
-              ixy_flip=False,iopt=0):
+              ixy_flip=False,iopt=0,
+              rdc=False):
     """
     Read dat extracted from VIC3D
+
+    Arguments
+    =========
+    fn       = 'BB/2012JUL11/node_data.csv',
+    ndat_col = 14,
+    ixy_flip = False
+    iopt     = 0
+    rdc      = False
     """
     # import pandas as pd
     # pd.read_csv()
+    t0=time()
+    print '=========\nData reading start from ', fn
     dat=np.genfromtxt(fn,delimiter=',',skiprows=1)
+    uet(second=time()-t0,head='Time spent reading data')
+    print '\nData reading completed.\n========='
     shp = dat.shape
-    # print shp
-    # print ndat_col
-    # print float(shp[1])/float(ndat_col)
-    ## raise IOError
     dat=np.reshape(dat, (shp[0],shp[1]/ndat_col,ndat_col))
-
     if ixy_flip:
         raise IOError, "Do not use 'ixy_flip'"
         ## xy coordinate
         dum = dat[:,:,0][::].copy() ## x coordinate
         dat[:,:,0] = dat[:,:,1][::].copy() ## y cooridnate
         dat[:,:,1] = dum[::].copy()
-
         ## strain coordinate
         dum= dat[:,:,3][::].copy()        ## exx
         dat[:,:,3] = dat[:,:,4][::].copy() ## eyy
         dat[:,:,4] = dum[::].copy()
-
         ## strain rate coordinate
         dum = dat[:,:,9][::].copy()          ##exxdot
         dat[:,:,9] = dat[:,:,10][::].copy()  ##eyydot
@@ -104,3 +114,18 @@ def write_dic_csvs(path='../dat/IFsteel/wXRD/BB'):
     for i in range(len(Exx)):
         f.write('%2i  %+.4f %+.4f %+.4f\n'%(i+1,Exx[i],Eyy[i],Ezz[i]))
     f.close()
+
+def read_expfld(fn='EXP_FLD.txt'):
+    import matplotlib.pyplot as plt
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    with open(fn,'r') as f:
+        lines = f.readlines()[1:]
+        for line in lines:
+            path, date, dist, Exx, Eyy, std1,\
+                std2, c = line.split('\n')[0].\
+                          split()
+            print Exx, Eyy
+            ax.plot(float(Exx),float(Eyy),'o',
+                    color=c)
+    return fig
