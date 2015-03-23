@@ -13,11 +13,9 @@ from MP.lib import mpl_lib
 from MP import ssort, progress_bar
 from numpy import random
 uet = progress_bar.update_elapsed_time
-
 sort=ssort.shellSort
 
 ### data analyzed by and extracted from a newer Vic3D
-
 def main_disc(fn='BB/2011NOV10/node_disc_36.csv',
               dist_bb=[10],
               dist_rb=[5],
@@ -65,8 +63,8 @@ def main_disc(fn='BB/2011NOV10/node_disc_36.csv',
 
     ## when using debugging: reduce the data sets.
     nst,nxy,ncol=dat.shape
-    dat = dat[:,random.choice(nxy, nxy/40),:]
-    nst,nxy,ncol=dat.shape
+    # dat = dat[:,random.choice(nxy, nxy/10),:]
+    # nst,nxy,ncol=dat.shape
 
     ## find the index for a reduced set of
     ## xy coordinates.
@@ -84,7 +82,7 @@ def main_disc(fn='BB/2011NOV10/node_disc_36.csv',
     for i in xrange(10):
         mn =+np.inf; mx =-np.inf
         mn_=+np.inf; mx_=-np.inf
-        ind = n_image-8+i+1
+        ind = n_image-10+i+1
         inds.append(ind)
         xs,ys,zs = analysis_xy_disc_e33dot(
             dat=dat,istp=ind,icol=12)
@@ -214,7 +212,7 @@ def main_disc(fn='BB/2011NOV10/node_disc_36.csv',
     plt.draw()
     pdf_all.close()
     ## if ioff: plt.close('all')
-    return fig1, fig2, fig3
+    return dat_r, fig1, fig2, fig3
 
 def main_disc_progr(dat,iopt,n=5):
     nstp, nxy, ncol = dat.shape
@@ -251,7 +249,7 @@ def find_coordinate_index(
     dist_sorted, indc = sort(dist)
     return in_ref[indc[0]]
 
-def find_indx_at_fracture(dat,iopt=0,selc='all'):
+def find_indx_at_fracture(dat,iopt=0):
     """
     Find the DIC index giving the maximum
     thinining rate
@@ -262,22 +260,19 @@ def find_indx_at_fracture(dat,iopt=0,selc='all'):
     iopt = 0
     """
     nstp, nxy, ncol = dat.shape
-    if iopt==0:
-        idx=9; idy=10
-    elif iopt==1:
-        idx=8; idy=9
+    if iopt==0: idx=9; idy=10
+    elif iopt==1: idx=8; idy=9
     exx_dot = dat[:,:,idx]
     eyy_dot = dat[:,:,idy]
     ezz_dot = exx_dot+eyy_dot  ## absolute value
     EZ=[]
     t0=time.time()
-    if selc=='all':
-        for istp in xrange(nstp):
-            inx = np.nanargmax(ezz_dot[istp,:])
-            EZ.append(ezz_dot[istp,inx])
-            uet(second=time.time()-t0,head='Elapsed time in finding indx')
+    for istp in xrange(nstp):
+        inx = np.nanargmax(ezz_dot[istp,:])
+        EZ.append(ezz_dot[istp,inx])
+        uet(second=time.time()-t0,
+            head='Elapsed time in finding indx')
 
-    # print np.argmax(EZ), '/', len(EZ)
     return np.argmax(EZ)
 
 
@@ -356,7 +351,7 @@ def plot_xy_disc_e33dot(
     dist_bb = backbone bb
     dist_rb = rib      rb
     """
-    d=dat[istp,:,:]
+    d = dat[istp,:,:]
     dz = np.log10(abs(d[:,icol]))
     mx = -np.inf; mn = +np.inf
     for i in xrange(len(dz)):
@@ -387,7 +382,6 @@ def plot_xy_disc_e33dot(
 
     mpl_lib.add_cb(ax=axb,filled=True, format='%7.2e',
                    norm = norm, ylab=r'$\dot{\bar{E}}_{33}$')
-
 
     val, ind = sort(zs);
     imn = ids[ind[0]]
@@ -457,29 +451,29 @@ def plot_xy_disc_e33dot(
 
     fout=open('xy_indx_ribs.txt','w')
 
-    col = ('indb','indr','distb','ind')
-    fout.write('%7s %7s %7s %7s'%col); fout.write('\n')
-    form = '%7i %7i %7i %7i\n'
-    form_nan = '%7i %7i %7i %7s\n'
-    t0=time.time()
+    col = ('ib','ir','x[mm]','y[mm]','xyind')
+    fout.write('%7s %7s %7s %7s %7s'%col); fout.write('\n')
+    form = '%7i %7i %7.3f %7.3f %7i\n'
+    form_nan = '%7i %7i %7s %7s %7s\n'
+    t0 = time.time()
     for i in xrange(len(db)): ## bone
-        indices_along_ribs = []
+        indices_along_ribs = []; coord = []
         for j in xrange(len(dr)):   ## ribs
-            x,y = xy_db_dr[i,j,:]
-            ind = find_nearest([x,y],xs,ys,err=2)
+            x,y = xy_db_dr[i,j,:]   ## Coordinates of the necked spot
+            ind = find_nearest([x,y],xs,ys,err=1.5)
 
             if not(np.isnan(ind)):
                 indices_along_ribs.append(ids[ind])
-                fout.write(form%(i,j,ind))
-            else:
-                fout.write(form_nan%(i,j,'nan'))
-        uet(time.time(),head='Time spent for finding indices for BR')
+                _x_ = d[ind,0]; _y_ = d[ind,1] ## actual coordinates
+                coord.append([_x_,_y_]) ## actual coordinates
+                fout.write(form%(i,j,_x_,_y_,ind))
+            else: fout.write(form_nan%(i,j,'nan','nan','nan'))
 
-        epsx = []; epsy = []; epsz = []; epst_dot = []; coord = []
+        uet(time.time()-t0,head='Time spent for finding indices for BR')
+
+        epsx = []; epsy = []; epsz = []; epst_dot = [];
         for k in xrange(len(indices_along_ribs)):
             indx = indices_along_ribs[k]
-            x = d[indx,0]; y = d[indx,1]
-            coord.append([x,y])
             ## ax.plot(x,y,sym[i],ms=3)
             ex=dat[:,indx,3]; ey=dat[:,indx,4]
             ## et=dat[:,indx,12] ## et=ez or ez_dot
@@ -712,10 +706,11 @@ def ex02(
 
     fn = open('EXP_FLD.txt','w')
     fig4=wf(nw=1,nh=1)
+    data=[]
     for i in xrange(len(fns)):
         #try:
             ## print fns[i]
-        fig1, fig2, fig3 = main_disc(
+        d, fig1, fig2, fig3 = main_disc(
             fn=fns[i],
             dist_bb=dist_bb,
             dist_rb=dist_rb,
@@ -724,6 +719,7 @@ def ex02(
             ntot_col=ntot_col[i],
             icol_ezz=icol_ezz,iopt=iopt,
             ioff=ioff,fig=fig4,fout=fn)
+        data.append(d)
         # except ValueError:
         #     print 'error occured in %s'%fns[i]
     print 'Analysis results have been saved to %s'%fn.name
@@ -734,3 +730,4 @@ def ex02(
     fig4.axes[0].set_xlim(-0.5,0.5)
     fig4.axes[0].set_ylim(-0.5,0.5)
     fig4.savefig('EXP_FLD.pdf')
+    return data
