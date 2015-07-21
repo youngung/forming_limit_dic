@@ -12,6 +12,7 @@ from readers import read_disc
 from MP.lib import mpl_lib
 from MP import ssort, progress_bar
 from numpy import random
+from MP.lib.mpl_lib import tune_xy_lim
 uet = progress_bar.update_elapsed_time
 sort=ssort.shellSort
 
@@ -585,7 +586,7 @@ def plot_xy_disc_e33dot(
         c.append(l.get_color())
 
     ## deco
-    from MP.lib.mpl_lib import tune_xy_lim
+
     fig1.axes[2].set_yscale('log')
     # fig1.axes[2].set_ylim(1e-3,)
     # tune_xy_lim(fig.axes);
