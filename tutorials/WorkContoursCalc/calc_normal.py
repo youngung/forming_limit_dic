@@ -6,12 +6,10 @@ import matplotlib.pyplot as plt
 
 def main(fn='./IFsteel/dat/Hill48.txt',locus_xy=None,ths=[90,45,0]):
     thetas = np.array(ths)*np.pi/180.
-
     X,Y,normals = read(fn,locus_xy)
     X_at_th = np.interp(thetas,normals,X)
     Y_at_th = np.interp(thetas,normals,Y)
     return X_at_th, Y_at_th
-    
 
 def read(fn='./IFsteel/dat/Hill48.txt',locus_xy=None):
     if type(locus_xy)==type(None):
@@ -74,3 +72,36 @@ def xy2rt(x,y):
     th=np.arctan2(y,x)
     r=np.sqrt(x**2+y**2)
     return r, th
+
+
+def find_stress(x,y,*ths):
+    TH   = np.arctan2(y,x)
+    _xs_ = np.interp(ths,TH,x)
+    _ys_ = np.interp(ths,TH,y)
+    return _xs_, _ys_
+
+def ex(thetas=[0,45,90]):
+    fig=plt.figure(1)
+    fig.clf()
+    ax=fig.add_subplot(111)
+    ax.set_aspect('equal')
+
+    ths = np.linspace(-np.pi,np.pi,100)
+    x,y = np.cos(ths), np.sin(ths)
+    ax.plot(x,y,'.')
+    thetas=np.array(thetas)*np.pi/180.
+    xs,ys=find_stress(x,y,*thetas)
+
+    print 'xs:','-'*20
+    print xs
+    print 'ys:','-'*20
+    print ys
+    ax.plot(xs,ys,'o')
+    ax.set_xlim(-1.1,1.1)
+    ax.set_ylim(-1.1,1.1)
+
+
+    ## Actual
+    x,y = np.cos(thetas),np.sin(thetas)
+    ax.plot(x,y,'+')
+    
